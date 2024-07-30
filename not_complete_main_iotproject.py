@@ -33,47 +33,47 @@ GPIO.setup(17, GPIO.IN)
 GPIO.setup(16,GPIO.OUT)
 
 
-#---------------[System]---------------
-try:
-    while True:
-        if GPIO.input(4) == 1: #MQ-135 Gas Sensor
-            print("Gas Detected")
-            GPIO.output(16,GPIO.HIGH)
-            #print("Gas Undetected")
-        if GPIO.input(17) == 1: #SW-491 Flame Sensor
-            print("Flame Detected")
-            aio.send_data(Raspberry_Fire.key,1)
-            GPIO.output(16,GPIO.HIGH)
-            #print("Flame Undetected")
-        if GPIO.input(17) == 1 && GPIO.input(4) == 1: #Fire Alarm
-            print("Flame Detected!!!!")
-            aio.send_data(Raspberry_Fire.key,1)
-            GPIO.output(16,GPIO.HIGH)
-        else
-            GPIO.output(16,GPIO.LOW)
-        sleep(1)
-finally:
-    print("Cleaning up...")
-    GPIO.cleanup()
+# #---------------[System]---------------
+# try:
+#     while True:
+#         if GPIO.input(4) == 1: #MQ-135 Gas Sensor
+#             print("Gas Detected")
+#             GPIO.output(16,GPIO.HIGH)
+#             #print("Gas Undetected")
+#         if GPIO.input(17) == 1: #SW-491 Flame Sensor
+#             print("Flame Detected")
+#             aio.send_data(Raspberry_Fire.key,1)
+#             GPIO.output(16,GPIO.HIGH)
+#             #print("Flame Undetected")
+#         if GPIO.input(17) == 1 && GPIO.input(4) == 1: #Fire Alarm
+#             print("Flame Detected!!!!")
+#             aio.send_data(Raspberry_Fire.key,1)
+#             GPIO.output(16,GPIO.HIGH)
+#         else
+#             GPIO.output(16,GPIO.LOW)
+#         sleep(1)
+# finally:
+#     print("Cleaning up...")
+#     GPIO.cleanup()
 
 
-try :
-    while True :
-        time.sleep(0.01)
-        if ser.in_waiting > 0 :
-            line = ser.readline().decode('utf-8').rstrip()
-            print(line)
-            if(line == "medium measurement") :
-               aio.send_data(Ardunio_Vibration_Medium.key,1)
-            if(line == "high measurement") :
-               aio.send_data(Ardunio_Vibration_High.key,1)
-            if(line == "close distance") :
-                aio.send_data(Ardunio_Ultrasonic_Close.key,1)
-            if(line == "medium distance") :
-                aio.send_data(Ardunio_Ultrasonic_Medium.key,1)
-except KeyboardInterrupt :
-    print("Close Serial communication.")
-    ser.close()
+# try :
+#     while True :
+#         time.sleep(0.01)
+#         if ser.in_waiting > 0 :
+#             line = ser.readline().decode('utf-8').rstrip()
+#             print(line)
+#             if(line == "medium measurement") :
+#                aio.send_data(Ardunio_Vibration_Medium.key,1)
+#             if(line == "high measurement") :
+#                aio.send_data(Ardunio_Vibration_High.key,1)
+#             if(line == "close distance") :
+#                 aio.send_data(Ardunio_Ultrasonic_Close.key,1)
+#             if(line == "medium distance") :
+#                 aio.send_data(Ardunio_Ultrasonic_Medium.key,1)
+# except KeyboardInterrupt :
+#     print("Close Serial communication.")
+#     ser.close()
     
 #---------------[camera]---------------
 
