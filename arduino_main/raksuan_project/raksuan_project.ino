@@ -6,8 +6,14 @@ const int VIBRATION_SENSOR_PIN = 9;
 // Ultrasonic
 const unsigned int TRIG_PIN = 4;
 const unsigned int ECHO_PIN = 2;
-const unsigned int LED_PIN_CLOSE = 3;
 const unsigned int LED_PIN_MEDIUM = 6;
+const unsigned int LED_PIN_HIGH = 3;
+
+//Flame Sensor
+const unsigned int FLAME_SENSOR = 4;
+
+//Gas Sensor
+
 
 void setup() {
   pinMode(VIBRATION_SENSOR_PIN, INPUT);

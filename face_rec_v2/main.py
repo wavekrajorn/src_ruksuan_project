@@ -8,6 +8,7 @@ import time
 import json
 import numpy as np  # Import NumPy
 import requests  # Import requests for HTTP requests
+import base64
 
 # Load configuration
 def load_config():
@@ -44,22 +45,16 @@ except Exception as e:
     print(f"Error loading model: {e}")
     exit(1)
 
-# # LINE Notify API
-# def send_line_notify(message, image_path=None):
-#     """Send a message and optionally an image to LINE Notify."""
-#     line_notify_token = '1OUFRqDMJWFx9WZHo2uBV16cQeDtGlefDEmPMS8Llr4'  # Replace with your LINE Notify token
-#     line_notify_api = 'https://notify-api.line.me/api/notify'
-#     headers = {'Authorization': f'Bearer {line_notify_token}'}
+# Function to send base64 image to the API
+def send_to_api(base64_image):
+    url = "http://localhost:3000/notifyPeople"
 
-#     data = {'message': message}
-#     files = None
+    payload = { "image64": base64_image }
+    headers = {"content-type": "application/json"}
 
-#     if image_path:
-#         files = {'imageFile': open(image_path, 'rb')}
+    response = requests.post(url, json=payload, headers=headers)
 
-#     response = requests.post(line_notify_api, headers=headers, data=data, files=files)
-#     if response.status_code != 200:
-#         print(f"Failed to send notification: {response.status_code} {response.text}")
+    print(response.json())
 
 # Initialize video capture
 video_capture = cv2.VideoCapture(0)
@@ -74,7 +69,7 @@ if config.get("enable_history_logging", False):
 
 # Variable to track last notification time
 last_notification_time = 0
-notification_delay = 10  # Delay in seconds (3 minutes)
+notification_delay = 180  # Delay in seconds (3 minutes)
 
 while True:
     ret, frame = video_capture.read()
@@ -127,7 +122,9 @@ while True:
             current_time = time.time()
             if name == "Unknown" and (current_time - last_notification_time) > notification_delay:
                 message = "Unknown person detected!"
-                # send_line_notify(message, face_image_path)
+                _, buffer = cv2.imencode('.jpg', face_image)
+                base64_image = base64.b64encode(buffer).decode('utf-8')
+                send_to_api(base64_image)
                 last_notification_time = current_time
 
     frame_count += 1
