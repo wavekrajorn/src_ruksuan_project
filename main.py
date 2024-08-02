@@ -3,7 +3,7 @@ import time
 import requests
 
 # Configure the serial connection (replace with your serial port and baud rate)
-ser = serial.Serial('COM5', 9600)  # For Windows, use 'COM3' or other port; for Linux, use '/dev/ttyUSB0' or similar
+ser = serial.Serial('COM7', 9600)  # For Windows, use 'COM3' or other port; for Linux, use '/dev/ttyUSB0' or similar
 
 last_message = None
 last_time = 0
