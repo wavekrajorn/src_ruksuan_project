@@ -6,13 +6,22 @@ import os
 import pickle
 import time
 import json
+import numpy as np  # Import NumPy
+import requests  # Import requests for HTTP requests
 
 # Load configuration
 def load_config():
-    with open('config.json', 'r') as config_file:
+    config_path = 'config.json'
+    if not os.path.exists(config_path):
+        raise FileNotFoundError("Config file not found. Please create 'config.json' with necessary configurations.")
+    with open(config_path, 'r') as config_file:
         return json.load(config_file)
 
-config = load_config()
+try:
+    config = load_config()
+except Exception as e:
+    print(f"Error loading configuration: {e}")
+    exit(1)
 
 # Directory to save detected faces and history
 output_dir = "detected_faces"
@@ -21,21 +30,36 @@ os.makedirs(output_dir, exist_ok=True)
 # File path to load the trained model
 model_path = "trained_model.pkl"
 
-# Load face detector
-face_detector = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
-
 # Load the trained model
 def load_model():
-    global known_face_encodings, known_face_names
-    if os.path.exists(model_path):
-        with open(model_path, 'rb') as model_file:
-            known_face_encodings, known_face_names = pickle.load(model_file)
-        print(f"Model loaded from {model_path}")
-    else:
-        print("No model found. Exiting.")
-        exit()
+    if not os.path.exists(model_path):
+        raise FileNotFoundError("Model file not found. Please ensure 'trained_model.pkl' exists and is accessible.")
+    with open(model_path, 'rb') as model_file:
+        return pickle.load(model_file)
 
-load_model()
+try:
+    known_face_encodings, known_face_names = load_model()
+    print(f"Model loaded from {model_path}")
+except Exception as e:
+    print(f"Error loading model: {e}")
+    exit(1)
+
+# LINE Notify API
+def send_line_notify(message, image_path=None):
+    """Send a message and optionally an image to LINE Notify."""
+    line_notify_token = '1OUFRqDMJWFx9WZHo2uBV16cQeDtGlefDEmPMS8Llr4'  # Replace with your LINE Notify token
+    line_notify_api = 'https://notify-api.line.me/api/notify'
+    headers = {'Authorization': f'Bearer {line_notify_token}'}
+
+    data = {'message': message}
+    files = None
+
+    if image_path:
+        files = {'imageFile': open(image_path, 'rb')}
+
+    response = requests.post(line_notify_api, headers=headers, data=data, files=files)
+    if response.status_code != 200:
+        print(f"Failed to send notification: {response.status_code} {response.text}")
 
 # Initialize video capture
 video_capture = cv2.VideoCapture(0)
@@ -43,32 +67,39 @@ video_capture = cv2.VideoCapture(0)
 process_every_n_frames = 2
 frame_count = 0
 
+history_log_path = os.path.join(output_dir, "history.log")
+history_log = None
 if config.get("enable_history_logging", False):
-    history_log_path = os.path.join(output_dir, "history.log")
     history_log = open(history_log_path, "a")
-else:
-    history_log = None
+
+# Variable to track last notification time
+last_notification_time = 0
+notification_delay = 180  # Delay in seconds (3 minutes)
 
 while True:
     ret, frame = video_capture.read()
     if not ret:
+        print("Failed to capture video frame.")
         break
 
+    # Resize frame for faster processing
     small_frame = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
     rgb_small_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
 
     if frame_count % process_every_n_frames == 0:
+        # Find all face locations and face encodings in the current frame
         face_locations = face_recognition.face_locations(rgb_small_frame)
         face_encodings = face_recognition.face_encodings(rgb_small_frame, face_locations)
 
         face_names = []
         for face_encoding, face_location in zip(face_encodings, face_locations):
-            matches = face_recognition.compare_faces(known_face_encodings, face_encoding)
+            # Compute the distance between the current face and known faces
+            face_distances = face_recognition.face_distance(known_face_encodings, face_encoding)
+            best_match_index = np.argmin(face_distances)
+            
             name = "Unknown"
-
-            if True in matches:
-                first_match_index = matches.index(True)
-                name = known_face_names[first_match_index]
+            if face_distances[best_match_index] < 0.45:  # You can adjust this threshold
+                name = known_face_names[best_match_index]
 
             top, right, bottom, left = face_location
             top *= 2
@@ -76,7 +107,9 @@ while True:
             bottom *= 2
             left *= 2
 
-            if config.get("enable_auto_photo", False):
+            # Automatically save detected face image if enabled
+            face_image_path = None
+            if config.get("enable_auto_photo", False) or name == "Unknown":
                 face_image = frame[top:bottom, left:right]
                 face_image_resized = cv2.resize(face_image, (200, 200))
 
@@ -90,22 +123,37 @@ while True:
 
             face_names.append(name)
 
+            # Send notification if the face is unknown and delay has passed
+            current_time = time.time()
+            if name == "Unknown" and (current_time - last_notification_time) > notification_delay:
+                message = "Unknown person detected!"
+                send_line_notify(message, face_image_path)
+                last_notification_time = current_time
+
     frame_count += 1
 
+    # Display the results
     for (top, right, bottom, left), name in zip(face_locations, face_names):
         top *= 2
         right *= 2
         bottom *= 2
         left *= 2
 
+        # Draw a box around the face
         cv2.rectangle(frame, (left, top), (right, bottom), (0, 0, 255), 2)
-        cv2.putText(frame, name, (left + 6, top - 6), cv2.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255), 1)
 
+        # Draw a label with a name below the face
+        cv2.rectangle(frame, (left, bottom - 35), (right, bottom), (0, 0, 255), cv2.FILLED)
+        cv2.putText(frame, name, (left + 6, bottom - 6), cv2.FONT_HERSHEY_DUPLEX, 1.0, (255, 255, 255), 1)
+
+    # Display the resulting image
     cv2.imshow('Video', frame)
 
+    # Hit 'q' on the keyboard to quit!
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
+# Release handle to the webcam
 video_capture.release()
 cv2.destroyAllWindows()
 
