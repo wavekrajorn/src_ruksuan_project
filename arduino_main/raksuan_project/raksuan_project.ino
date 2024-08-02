@@ -1,85 +1,105 @@
-// Vibration
-const int LED_PIN = 12;
-const int BUZZER_PIN = 7;
-const int VIBRATION_SENSOR_PIN = 9;
-
-// Ultrasonic
-const unsigned int TRIG_PIN = 4;
-const unsigned int ECHO_PIN = 2;
-const unsigned int LED_PIN_MEDIUM = 6;
-const unsigned int LED_PIN_HIGH = 3;
-
-//Flame Sensor
-const unsigned int FLAME_SENSOR = 4;
-
-//Gas Sensor
-
+#define BUZZER 9
+#define FLAME_SENSOR A0
+#define GAS_SENSOR A1
+#define ULTRA_SONIC_TRIG 11
+#define ULTRA_SONIC_ECHO 10
+#define WATER_LED_MID 13
+#define WATER_LED_HIGH 12
+#define VIBRATION_SENSOR A2
 
 void setup() {
-  pinMode(VIBRATION_SENSOR_PIN, INPUT);
-  pinMode(LED_PIN, OUTPUT);
-  pinMode(BUZZER_PIN, OUTPUT); // Vibration sensor
-
-  pinMode(TRIG_PIN, OUTPUT);
-  pinMode(ECHO_PIN, INPUT);
-  pinMode(LED_PIN_CLOSE, OUTPUT);
-  pinMode(LED_PIN_MEDIUM, OUTPUT); // Ecco
-  Serial.begin(9600);
+  pinMode(BUZZER, OUTPUT);
+  pinMode(FLAME_SENSOR, INPUT);
+  pinMode(GAS_SENSOR, INPUT);
+  pinMode(WATER_LED_MID, OUTPUT);
+  pinMode(WATER_LED_HIGH, OUTPUT);
+  pinMode(VIBRATION_SENSOR, INPUT);
+  
+  pinMode(ULTRA_SONIC_TRIG, OUTPUT);
+  pinMode(ULTRA_SONIC_ECHO, INPUT);
+  Serial.begin(9600); // For debugging purposes
 }
 
 void loop() {
-  long measurement = vibration();
-  delay(50);
+  long duration;
+  int distance;
 
-  // Vibration Measurement
-  if (measurement > 10000 && measurement < 20000) {
-    digitalWrite(LED_PIN, HIGH);
-    tone(BUZZER_PIN, 370);
-    Serial.println("Medium measurement");
-  } else if (measurement >= 20000) {
-    digitalWrite(LED_PIN, HIGH);
-    tone(BUZZER_PIN, 740);
-    Serial.println("High measurement");
-  } else {
-    digitalWrite(LED_PIN, LOW);
-    noTone(BUZZER_PIN);
-  }
-
-  // Ultrasonic Distance Measurement
-  long distance = getDistance();
-
-  // LED Indicators based on distance
-  if (distance < 14) {
-    digitalWrite(LED_PIN_CLOSE, HIGH);
-    digitalWrite(LED_PIN_MEDIUM, HIGH);
-    Serial.println("Close distance");
-  } else if (distance >= 14 && distance <= 16) {
-    digitalWrite(LED_PIN_CLOSE, LOW);
-    digitalWrite(LED_PIN_MEDIUM, HIGH);
-    Serial.println("Medium distance");
-  } else {
-    digitalWrite(LED_PIN_CLOSE, LOW);
-    digitalWrite(LED_PIN_MEDIUM, LOW);
-    Serial.println("Far distance");
-  }
-}
-
-long vibration() {
-  return pulseIn(VIBRATION_SENSOR_PIN, HIGH);
-}
-
-long getDistance() {
-  digitalWrite(TRIG_PIN, LOW);
+  // Send a 10 microsecond pulse to the trigger pin
+  digitalWrite(ULTRA_SONIC_TRIG, LOW);
   delayMicroseconds(2);
-
-  digitalWrite(TRIG_PIN, HIGH);
+  digitalWrite(ULTRA_SONIC_TRIG, HIGH);
   delayMicroseconds(10);
-  digitalWrite(TRIG_PIN, LOW);
+  digitalWrite(ULTRA_SONIC_TRIG, LOW);
 
-  long duration = pulseIn(ECHO_PIN, HIGH);
-  return (duration / 2) / 29.1;
+  // Read the echo pin and calculate the distance
+  duration = pulseIn(ULTRA_SONIC_ECHO, HIGH);
+  distance = duration * 0.034 / 2; // Convert to centimeters
+
+  // Read gas, flame, and vibration sensor values
+  int gasValue = analogRead(GAS_SENSOR);
+  int flameValue = analogRead(FLAME_SENSOR);
+  int vibrationValue = analogRead(VIBRATION_SENSOR);
+
+  // Initialize flags for logging
+  bool waterMid = false;
+  bool waterHigh = false;
+  bool gasDetected = false;
+  bool fireDetected = false;
+  bool vibrationDetected = false;
+
+  // Check for high water level
+  // Serial.println(distance);
+  if (distance <= 15) {
+    digitalWrite(WATER_LED_HIGH, HIGH);
+    digitalWrite(WATER_LED_MID, LOW);
+    waterHigh = true;
+  } else if (distance <= 18) {
+    digitalWrite(WATER_LED_HIGH, LOW);
+    digitalWrite(WATER_LED_MID, HIGH);
+    waterMid = true;
+  } else {
+    digitalWrite(WATER_LED_HIGH, LOW);
+    digitalWrite(WATER_LED_MID, LOW);
+  }
+
+  // Check gas detection
+  if (gasValue > 100) { // Adjust threshold as needed
+    gasDetected = true;
+  }
+
+  // Check flame detection
+  if (flameValue < 300) { // Adjust threshold as needed
+    fireDetected = true;
+  }
+
+  // Check vibration detection
+  if (vibrationValue > 200) { // Adjust threshold as needed
+    vibrationDetected = true;
+  }
+
+  // Update buzzer state
+  if (waterHigh || gasDetected || fireDetected || vibrationDetected) {
+    digitalWrite(BUZZER, HIGH);
+  } else {
+    digitalWrite(BUZZER, LOW);
+  }
+
+  // Print messages to Serial Monitor based on flags
+  if (waterMid) {
+    Serial.println("Water level mid!");
+  }
+  if (waterHigh) {
+    Serial.println("Water level high!");
+  }
+  if (gasDetected) {
+    Serial.println("Gas detected!");
+  }
+  if (fireDetected) {
+    Serial.println("Fire detected!");
+  }
+  if (vibrationDetected) {
+    Serial.println("Vibration detected!");
+  }
+
+  delay(1000); // Wait for 1 second before the next measurement
 }
-
-
-
-// Craft By : Vish Siriwatana

@@ -52,7 +52,7 @@ app.post('/notifyQuake', async (req, res) => {
 });
 
 
-app.post('/notifyWaterLow', async (req, res) => {
+app.post('/notifyWaterMid', async (req, res) => {
     const message = "💦 ตรวจพบน้ำท่วมปริมาณ \"น้อย\" ไม่ต้องรีบกลับไปโดยทันที!!";
 
     const date_time = new Date();
